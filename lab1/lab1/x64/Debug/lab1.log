@@ -1,0 +1,17 @@
+﻿  lab1.cpp
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(138,24): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(141,97): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(142,97): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(217,74): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(217,53): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(220,72): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(220,51): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(226,78): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(226,55): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(229,76): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(229,53): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(235,76): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(235,54): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(238,74): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+D:\Codding\labs\3D\lab1\lab1\lab1.cpp(238,52): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+  lab1.vcxproj -> D:\Codding\labs\3D\lab1\x64\Debug\lab1.exe
