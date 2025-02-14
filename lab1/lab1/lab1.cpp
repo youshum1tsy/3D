@@ -238,6 +238,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     LineTo(hdc, rotated_matrix[i][0], rotated_matrix[i][1]);
                 }
             }
+			
             
             // TODO: Add any drawing code that uses hdc here...
             EndPaint(hWnd, &ps);
