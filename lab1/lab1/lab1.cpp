@@ -122,27 +122,25 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 
-void scale(float& x, float& y, float& z, float scaleX, float scaleY, float scaleZ) {
-    x = x * scaleX;
-    y = y * scaleY;
-    z = z * scaleZ;
+void scale(float& x, float& y, float& z, float scale[3][3]) {
+    x *= scale[0][0];
+    y *= scale[1][1];
+    z *= scale[2][2];
 }
 
-void mirror(float& x, float& y, float& z) {
-    x = x;
-    y = y * -1;
-    z = z;
+void mirror(float& x, float& y, float& z, float mirror[3][3]) {
+    x *= mirror[0][0];
+    y *= mirror[1][1];
+    z *= mirror[2][2];
 }
 
-void rotate(float& x, float& y, float& z, const int m, const int n ,int angleDegrees) {
-    float angleRadians = angleDegrees * M_PI / 180.0f;
+void rotate(float& x, float& y, float& z, float rotate[3][3]) {
     float oldX = x;
     float oldY = y;
-    x = (oldX * cos(angleRadians)) - (oldY * sin(angleRadians)) - (m * (cos(angleRadians) - 1)) + (n * sin(angleRadians));
-    y = (oldX * sin(angleRadians)) + (oldY * cos(angleRadians)) - (n * (cos(angleRadians) - 1)) - (m * sin(angleRadians));
+    x = oldX * rotate[0][0] + oldY * rotate[1][0] + rotate[2][0];
+    y = oldX * rotate[0][1] + oldY * rotate[1][1] + rotate[2][1];
     z = z;
 };
-
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -190,26 +188,46 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 {700, 500, 1, 1},
                 {700, 510, 1, 1},
             };
-            const int sizeMove = sizeof(matrix);
             
-            SetViewportOrgEx(hdc, 500, 500, NULL);
+            float angleRadians = 45 * M_PI / 180.0f;
 
-            int targetAngleDegrees = 45;
+            float scale_matrix[3][3]{
+                {1, 0 ,0},
+                {0, 0.5, 0},
+                {0, 0, 1} 
+            };
+
+            float mirror_matrix[3][3]{ 
+                {1, 0 ,0},
+                {0, -1, 0},
+                {0, 0, 1}
+            };
+
+            float rotate_matrix[3][3]{
+                {cos(angleRadians), sin(angleRadians), 0},
+                {-sin(angleRadians), cos(angleRadians), 0},
+                {-800 * (cos(angleRadians) - 1) + 500 * sin(angleRadians), -500 * (cos(angleRadians) - 1) - 800 * sin(angleRadians), 1}
+            };
+                
+                                        
+
+            const int sizeMove = sizeof(matrix);
+
+            SetViewportOrgEx(hdc, 100, 500, NULL);
 
             float scaled_matrix[sizeMove][sizeParam];
-            memcpy(scaled_matrix, matrix, sizeof(matrix));
+            memcpy(scaled_matrix, matrix, sizeMove);
 
             float mirrored_matrix[sizeMove][sizeParam];
-            memcpy(mirrored_matrix, matrix, sizeof(matrix));
+            memcpy(mirrored_matrix, matrix, sizeMove);
 
             float rotated_matrix[sizeMove][sizeParam];
-            memcpy(rotated_matrix, matrix, sizeof(matrix));
+            memcpy(rotated_matrix, matrix, sizeMove);
 
             for (size_t i = 0; i < sizeMove; i++) {
-                scale(scaled_matrix[i][0], scaled_matrix[i][1], scaled_matrix[i][2], 1, 0.5, 1);
-                mirror(mirrored_matrix[i][0], mirrored_matrix[i][1], mirrored_matrix[i][2]);
-                rotate(rotated_matrix[i][0], rotated_matrix[i][1], rotated_matrix[i][2], 800, 500, targetAngleDegrees);
-                
+                scale(scaled_matrix[i][0], scaled_matrix[i][1], scaled_matrix[i][2], scale_matrix);
+                mirror(mirrored_matrix[i][0], mirrored_matrix[i][1], mirrored_matrix[i][2], mirror_matrix);
+                rotate(rotated_matrix[i][0], rotated_matrix[i][1], rotated_matrix[i][2], rotate_matrix);
             }
 
             for (size_t i = 0; i < sizeMove; i++) {
