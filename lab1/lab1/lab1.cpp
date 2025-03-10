@@ -122,28 +122,136 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 
-void scale(float& x, float& y, float& z, float scale[3][3]) {
-    x *= scale[0][0];
-    y *= scale[1][1];
-    z *= scale[2][2];
-}
+const WPARAM KEY_Q = 0x51;
+const WPARAM KEY_W = 0x57;
+const WPARAM KEY_E = 0x45;
+const WPARAM KEY_R = 0x52;
 
-void mirror(float& x, float& y, float& z, float mirror[3][3]) {
-    x *= mirror[0][0];
-    y *= mirror[1][1];
-    z *= mirror[2][2];
-}
-
-void rotate(float& x, float& y, float& z, float rotate[3][3]) {
-    float oldX = x;
-    float oldY = y;
-    x = oldX * rotate[0][0] + oldY * rotate[1][0] + rotate[2][0];
-    y = oldX * rotate[0][1] + oldY * rotate[1][1] + rotate[2][1];
-    z = z;
+enum class Transform {
+    ORIGINAL,
+    MIRROR,
+    ROTATE,
+    SCALE
 };
+
+void centerMatrix(float matrix[][4], size_t rows, HWND hWnd, float moveTransform[3][3]) {
+    float xMin = FLT_MAX;
+    float yMin = FLT_MAX;
+    float xMax = -FLT_MAX;
+    float yMax = -FLT_MAX;
+
+    for (size_t i = 0; i < rows; i++) {
+        if (matrix[i][0] < xMin) {
+            xMin = matrix[i][0];
+        }
+        if (matrix[i][0] > xMax) {
+            xMax = matrix[i][0];
+        }
+        if (matrix[i][1] < yMin) {
+            yMin = matrix[i][1];
+        }
+        if (matrix[i][1] > yMax) {
+            yMax = matrix[i][1];
+        }
+    }
+
+    float xCenter = (xMin + xMax) / 2;
+    float yCenter = (yMin + yMax) / 2;
+
+    RECT rect;
+    GetClientRect(hWnd, &rect);
+    float windowCenterX = (rect.right - rect.left) / 2.0f;
+    float windowCenterY = (rect.bottom - rect.top) / 2.0f;
+
+    float moveX = windowCenterX - xCenter;
+    float moveY = windowCenterY - yCenter;
+
+    moveTransform[0][0] = 1.0f;
+    moveTransform[0][1] = 0.0f;
+    moveTransform[0][2] = 0.0f;
+
+    moveTransform[1][0] = 0.0f;
+    moveTransform[1][1] = 1.0f;
+    moveTransform[1][2] = 0.0f;
+
+    moveTransform[2][0] = moveX;
+    moveTransform[2][1] = moveY;
+    moveTransform[2][2] = 1.0f;
+}
+
+void moveMatrix(float matrix[][4], size_t rows, float move[3][3]) {
+    for (size_t i = 0; i < rows; i++) {
+        matrix[i][0] += move[2][0];
+        matrix[i][1] += move[2][1];
+    }
+}
+
+void scaleMatrix(float matrix[][4], size_t rows, float scale[3][3]) {
+    for (size_t i = 0; i < rows; i++) {
+        matrix[i][0] *= scale[0][0];
+        matrix[i][1] *= scale[1][1];
+        matrix[i][2] *= scale[2][2];
+    }
+}
+
+void mirrorMatrix(float matrix[][4], size_t rows, float mirror[3][3]) {
+    for (size_t i = 0; i < rows; i++) {
+        matrix[i][0] *= mirror[0][0];
+        matrix[i][1] *= mirror[1][1];
+        matrix[i][2] *= mirror[2][2];
+    }
+}
+
+void rotateMatrix(float matrix[][4], size_t rows, float rotate[3][3]) {
+    for (size_t i = 0; i < rows; i++) {
+        float oldX = matrix[i][0];
+        float oldY = matrix[i][1];
+        matrix[i][0] = oldX * rotate[0][0] + oldY * rotate[1][0] + rotate[2][0];
+        matrix[i][1] = oldX * rotate[0][1] + oldY * rotate[1][1] + rotate[2][1];
+    }
+}
+
+void paint(HDC& hdc, float matrix[][4], size_t rows) {
+    for (size_t i = 0; i < rows; i++) {
+        if (matrix[i][3] == 0) {
+            MoveToEx(hdc, matrix[i][0], matrix[i][1], NULL);
+        }
+        else if (matrix[i][3] == 1) {
+            LineTo(hdc, matrix[i][0], matrix[i][1]);
+        }
+    }
+}
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    static float matrix[][4] = {
+        {800, 200, 1, 0}, // head
+        {850, 150, 1, 1},
+        {800, 100, 1, 1},
+        {750, 150, 1, 1},
+        {800, 200, 1, 1},
+        {800, 250, 1, 1}, // neck     
+        {950, 325, 1, 1}, // arm right
+        {800, 250, 1, 0}, // neck     
+        {650, 325, 1, 1}, // arm left
+        {800, 250, 1, 0}, // neck     
+        {800, 400, 1, 1}, // body
+        {875, 500, 1, 1}, // leg right     
+        {900, 500, 1, 1},
+        {800, 400, 1, 0}, // body     
+        {725, 500, 1, 1}, // leg left
+        {700, 500, 1, 1},
+        {700, 510, 1, 1},
+    };
+
+    static const size_t rows = sizeof(matrix) / sizeof(matrix[0]);
+    static float scaledFigure[rows][4];
+    static float mirroredFigure[rows][4];
+    static float rotatedFigure[rows][4];
+    static bool initialized = false;
+    static Transform currentFigure = Transform::ORIGINAL;
+
     switch (message)
     {
     case WM_COMMAND:
@@ -168,100 +276,136 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
 
-            const int sizeParam = 4;
-            float matrix[][sizeParam] = {
-                {800, 200, 1, 0}, // head
-                {850, 150, 1, 1},
-                {800, 100, 1, 1},
-                {750, 150, 1, 1},
-                {800, 200, 1, 1},
-                {800, 250, 1, 1}, // neck     
-                {950, 325, 1, 1}, // arm right
-                {800, 250, 1, 0}, // neck     
-                {650, 325, 1, 1}, // arm left
-                {800, 250, 1, 0}, // neck     
-                {800, 400, 1, 1}, // body
-                {875, 500, 1, 1}, // leg right     
-                {900, 500, 1, 1},
-                {800, 400, 1, 0}, // body     
-                {725, 500, 1, 1}, // leg left
-                {700, 500, 1, 1},
-                {700, 510, 1, 1},
-            };
-            
             float angleRadians = 45 * M_PI / 180.0f;
 
-            float scale_matrix[3][3]{
-                {1, 0 ,0},
+            float scaleTransform[3][3]{
+                {1, 0,  0},
                 {0, 0.5, 0},
                 {0, 0, 1} 
             };
 
-            float mirror_matrix[3][3]{ 
+            float mirrorTransform[3][3]{
                 {1, 0 ,0},
                 {0, -1, 0},
                 {0, 0, 1}
             };
 
-            float rotate_matrix[3][3]{
+            float xMin = FLT_MAX;
+            float yMin = FLT_MAX;
+            float xMax = -FLT_MAX;
+            float yMax = -FLT_MAX;
+
+            for (size_t i = 0; i < rows; i++) {
+                if (matrix[i][0] < xMin) {
+                    xMin = matrix[i][0];
+                }
+                if (matrix[i][0] > xMax) {
+                    xMax = matrix[i][0];
+                }
+                if (matrix[i][1] < yMin) {
+                    yMin = matrix[i][1];
+                }
+                if (matrix[i][1] > yMax) {
+                    yMax = matrix[i][1];
+                }
+            }
+            float xCenter = (xMin + xMax) / 2;
+            float yCenter = (yMin + yMax) / 2;
+
+            float rotateTransform[3][3]{
                 {cos(angleRadians), sin(angleRadians), 0},
                 {-sin(angleRadians), cos(angleRadians), 0},
-                {-800 * (cos(angleRadians) - 1) + 500 * sin(angleRadians), -500 * (cos(angleRadians) - 1) - 800 * sin(angleRadians), 1}
+                {-xCenter * (cos(angleRadians) - 1) + yCenter * sin(angleRadians), -yCenter * (cos(angleRadians) - 1) - xCenter * sin(angleRadians), 1}
             };
-                
-                                        
 
-            const int sizeMove = sizeof(matrix);
+            RECT rect;
+            GetClientRect(hWnd, &rect);
 
-            SetViewportOrgEx(hdc, 100, 500, NULL);
+            float windowCenterX = (rect.right - rect.left) / 2.0f;
+            float windowCenterY = (rect.bottom - rect.top) / 2.0f;
 
-            float scaled_matrix[sizeMove][sizeParam];
-            memcpy(scaled_matrix, matrix, sizeMove);
+            float moveX = windowCenterX - xCenter;
+            float moveY = windowCenterY - yCenter;
 
-            float mirrored_matrix[sizeMove][sizeParam];
-            memcpy(mirrored_matrix, matrix, sizeMove);
+            float moveTransform[3][3] = {
+                {1, 0, 0},
+                {0, 1, 0},
+                {moveX, moveY, 1}
+            };
 
-            float rotated_matrix[sizeMove][sizeParam];
-            memcpy(rotated_matrix, matrix, sizeMove);
 
-            for (size_t i = 0; i < sizeMove; i++) {
-                scale(scaled_matrix[i][0], scaled_matrix[i][1], scaled_matrix[i][2], scale_matrix);
-                mirror(mirrored_matrix[i][0], mirrored_matrix[i][1], mirrored_matrix[i][2], mirror_matrix);
-                rotate(rotated_matrix[i][0], rotated_matrix[i][1], rotated_matrix[i][2], rotate_matrix);
+            if (!initialized) {
+
+                memcpy(scaledFigure, matrix, sizeof(matrix));
+                memcpy(mirroredFigure, matrix, sizeof(matrix));
+                memcpy(rotatedFigure, matrix, sizeof(matrix));
+
+                scaleMatrix(scaledFigure, rows, scaleTransform);
+                mirrorMatrix(mirroredFigure, rows, mirrorTransform);
+                rotateMatrix(rotatedFigure, rows, rotateTransform);
+
+                float moveOriginalTransform[3][3];
+                float moveScaledTransform[3][3];
+                float moveMirroredTransform[3][3];
+                float moveRotatedTransform[3][3];
+
+                centerMatrix(matrix, rows, hWnd, moveOriginalTransform);
+                centerMatrix(scaledFigure, rows, hWnd, moveScaledTransform);
+                centerMatrix(mirroredFigure, rows, hWnd, moveMirroredTransform);
+                centerMatrix(rotatedFigure, rows, hWnd, moveRotatedTransform);
+
+                moveMatrix(matrix, rows, moveOriginalTransform);
+                moveMatrix(scaledFigure, rows, moveScaledTransform);
+                moveMatrix(mirroredFigure, rows, moveMirroredTransform);
+                moveMatrix(rotatedFigure, rows, moveRotatedTransform);
+
+                initialized = true;
             }
 
-            for (size_t i = 0; i < sizeMove; i++) {
-                if (scaled_matrix[i][3] == 0) {
-                    MoveToEx(hdc, scaled_matrix[i][0], scaled_matrix[i][1], NULL);
-                }
-                else if (scaled_matrix[i][3] == 1) {
-                    LineTo(hdc, scaled_matrix[i][0], scaled_matrix[i][1]);
-                }
+            switch (currentFigure)
+            {
+            case Transform::SCALE: 
+                paint(hdc, scaledFigure, rows);
+                break;
+            case Transform::MIRROR:
+                paint(hdc, mirroredFigure, rows);
+                break;
+            case Transform::ROTATE: 
+                paint(hdc, rotatedFigure, rows);
+                break;
+            default:
+                paint(hdc, matrix, rows);
+                break;
             }
 
-            for (size_t i = 0; i < sizeMove; i++) {
-                if (mirrored_matrix[i][3] == 0) {
-                    MoveToEx(hdc, mirrored_matrix[i][0], mirrored_matrix[i][1], NULL);
-                }
-                else if (mirrored_matrix[i][3] == 1) {
-                    LineTo(hdc, mirrored_matrix[i][0], mirrored_matrix[i][1]);
-                }
-            }
-
-            for (size_t i = 0; i < sizeMove; i++) {
-                if (rotated_matrix[i][3] == 0) {
-                    MoveToEx(hdc, rotated_matrix[i][0], rotated_matrix[i][1], NULL);
-                }
-                else if (rotated_matrix[i][3] == 1) {
-                    LineTo(hdc, rotated_matrix[i][0], rotated_matrix[i][1]);
-                }
-            }
-			
-            
-            // TODO: Add any drawing code that uses hdc here...
             EndPaint(hWnd, &ps);
         }
         break;
+
+
+    case WM_KEYDOWN:
+    {
+        switch (wParam)
+        {
+        case KEY_Q:
+            currentFigure = Transform::ORIGINAL;
+            break;
+        case KEY_W: 
+            currentFigure = Transform::MIRROR;
+            break;
+        case KEY_E: 
+            currentFigure = Transform::ROTATE;
+            break;
+        case KEY_R: 
+            currentFigure = Transform::SCALE;
+            break;
+        default:
+            return 0;
+        }
+        InvalidateRect(hWnd, NULL, TRUE);
+    }
+    break;
+
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
